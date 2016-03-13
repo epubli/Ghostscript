@@ -91,6 +91,22 @@ class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($method->invoke($device, '-dFoo'));
     }
 
+    public function testStringParameterTester()
+    {
+        $device = $this->createDevice(['-sFoo=/Bar']);
+
+        $this->assertFalse($device->hasStringParameter('Bar'));
+        $this->assertTrue($device->hasStringParameter('Foo'));
+    }
+
+    public function testTokenParameterTester()
+    {
+        $device = $this->createDevice(['-dFoo=/Bar']);
+
+        $this->assertFalse($device->hasTokenParameter('Bar'));
+        $this->assertTrue($device->hasTokenParameter('Foo'));
+    }
+
     public function testArgumentValueGetter()
     {
         $device = $this->createDevice(['-dFoo=/Bar']);
@@ -99,6 +115,22 @@ class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
 
         $this->assertNull($method->invoke($device, '-dBaz'));
         $this->assertSame('/Bar', $method->invoke($device, '-dFoo'));
+    }
+
+    public function testStringParameterValueGetter()
+    {
+        $device = $this->createDevice(['-sFoo=/Bar']);
+
+        $this->assertNull($device->getStringParameterValue('Bar'));
+        $this->assertSame('/Bar', $device->getStringParameterValue('Foo'));
+    }
+
+    public function testTokenParameterValueGetter()
+    {
+        $device = $this->createDevice(['-dFoo=/Bar']);
+
+        $this->assertNull($device->getTokenParameterValue('Bar'));
+        $this->assertSame('/Bar', $device->getTokenParameterValue('Foo'));
     }
 
     public function testArgumentSetter()
@@ -146,6 +178,26 @@ class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
         $argument = $arguments->getArgument('-dFoo');
         $this->assertInstanceOf(Argument::class, $argument);
         $this->assertEquals(42, $argument->getValue());
+    }
+
+    public function testBooleanParameterSetter()
+    {
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
+
+        /** @var AbstractDevice $device */
+        $device = $this->getMockForAbstractClass(AbstractDevice::class, [$ghostscript, $arguments]);
+
+        $device->setBooleanParameter('Foo', 'someTrueishValue');
+        $device->setBooleanParameter('Bar', 0);
+
+        $argument = $arguments->getArgument('-dFoo');
+        $this->assertInstanceOf(Argument::class, $argument);
+        $this->assertSame('true', $argument->getValue());
+
+        $argument = $arguments->getArgument('-dBar');
+        $this->assertInstanceOf(Argument::class, $argument);
+        $this->assertSame('false', $argument->getValue());
     }
 
     public function testProcessCreation()

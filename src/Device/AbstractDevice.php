@@ -122,6 +122,30 @@ abstract class AbstractDevice
     }
 
     /**
+     * Whether string parameter is set.
+     *
+     * @param string $name
+     *
+     * @return bool
+     */
+    public function hasStringParameter($name)
+    {
+        return $this->hasArgument('-s' . $name);
+    }
+
+    /**
+     * Whether token parameter is set.
+     *
+     * @param string $name
+     *
+     * @return bool
+     */
+    public function hasTokenParameter($name)
+    {
+        return $this->hasArgument('-d' . $name);
+    }
+
+    /**
      * Get argument value.
      *
      * @param string $name
@@ -136,6 +160,30 @@ abstract class AbstractDevice
         }
 
         return $argument->getValue();
+    }
+
+    /**
+     * Get string parameter value.
+     *
+     * @param string $name
+     *
+     * @return null|string
+     */
+    public function getStringParameterValue($name)
+    {
+        return $this->getArgumentValue('-s' . $name);
+    }
+
+    /**
+     * Get token parameter value.
+     *
+     * @param string $name
+     *
+     * @return null|string
+     */
+    public function getTokenParameterValue($name)
+    {
+        return $this->getArgumentValue('-d' . $name);
     }
 
     /**
@@ -162,9 +210,7 @@ abstract class AbstractDevice
      */
     public function setStringParameter($param, $value)
     {
-        $this->setArgument(sprintf('-s%s=%s', $param, $value));
-
-        return $this;
+        return $this->setArgument(sprintf('-s%s=%s', $param, $value));
     }
 
     /**
@@ -175,11 +221,22 @@ abstract class AbstractDevice
      *
      * @return $this
      */
-    public function setTokenParameter($param, $value)
+    public function setTokenParameter($param, $value = null)
     {
-        $this->setArgument(sprintf('-d%s=%s', $param, $value));
+        return $this->setArgument('-d' . $param . (isset($value) ? '=' . $value : ''));
+    }
 
-        return $this;
+    /**
+     * Set a generic command line parameter with a boolean value
+     *
+     * @param string $param the parameter name
+     * @param bool $value the parameter value
+     *
+     * @return $this
+     */
+    public function setBooleanParameter($param, $value)
+    {
+        return $this->setTokenParameter($param, $value ? 'true' : 'false');
     }
 
     /**
