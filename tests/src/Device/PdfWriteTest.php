@@ -10,16 +10,18 @@ namespace GravityMedia\GhostscriptTest\Device;
 use GravityMedia\Ghostscript\Device\PdfWrite;
 use GravityMedia\Ghostscript\Enum\PdfSettings;
 use GravityMedia\Ghostscript\Enum\ProcessColorModel;
+use GravityMedia\Ghostscript\Ghostscript;
 use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
-use Symfony\Component\Process\ProcessBuilder;
 
 /**
- * The PDF write device test class
+ * The PDF write device test class.
  *
  * @package GravityMedia\GhostscriptTest\Devices
  *
  * @covers  \GravityMedia\Ghostscript\Device\PdfWrite
  *
+ * @uses    \GravityMedia\Ghostscript\Ghostscript
+ * @uses    \GravityMedia\Ghostscript\Input
  * @uses    \GravityMedia\Ghostscript\Enum\PdfSettings
  * @uses    \GravityMedia\Ghostscript\Enum\ProcessColorModel
  * @uses    \GravityMedia\Ghostscript\Device\AbstractDevice
@@ -30,14 +32,31 @@ use Symfony\Component\Process\ProcessBuilder;
 class PdfWriteTest extends \PHPUnit_Framework_TestCase
 {
     /**
+     * Returns an OS independent representation of the commandline.
+     *
+     * @param string $commandline
+     *
+     * @return mixed
+     */
+    protected function quoteCommandLine($commandline)
+    {
+        if ('WIN' === strtoupper(substr(PHP_OS, 0, 3))) {
+            return str_replace('"', '\'', $commandline);
+
+        }
+
+        return $commandline;
+    }
+
+    /**
      * @return PdfWrite
      */
     protected function createDevice()
     {
-        $processBuilder = new ProcessBuilder();
+        $ghostscript = new Ghostscript();
         $processArguments = new ProcessArguments();
 
-        return new PdfWrite($processBuilder, $processArguments);
+        return new PdfWrite($ghostscript, $processArguments);
     }
 
     public function testDeviceCreation()
@@ -52,15 +71,6 @@ class PdfWriteTest extends \PHPUnit_Framework_TestCase
 
         $this->assertNull($device->getOutputFile());
         $this->assertSame($outputFile, $device->setOutputFile($outputFile)->getOutputFile());
-    }
-
-    public function testOutputStdoutArgument()
-    {
-        $device = $this->createDevice();
-        $this->assertFalse($device->isOutputStdout());
-
-        $device->setOutputStdout();
-        $this->assertTrue($device->isOutputStdout());
     }
 
     /**
@@ -127,5 +137,15 @@ class PdfWriteTest extends \PHPUnit_Framework_TestCase
     public function testProcessColorModelSetterThrowsExceptionOnInvalidArgument()
     {
         $this->createDevice()->setProcessColorModel('/foo');
+    }
+
+    public function testProcessCreation()
+    {
+        $process = $this->createDevice()->createProcess();
+
+        $this->assertEquals(
+            "'gs' '-sDEVICE=pdfwrite' '-dPDFSETTINGS=/default' '-c' '.setpdfwrite'",
+            $this->quoteCommandLine($process->getCommandLine())
+        );
     }
 }

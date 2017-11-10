@@ -8,16 +8,18 @@
 namespace GravityMedia\GhostscriptTest\Device;
 
 use GravityMedia\Ghostscript\Device\BoundingBoxInfo;
-use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
-use Symfony\Component\Process\ProcessBuilder;
+use GravityMedia\Ghostscript\Ghostscript;
+use GravityMedia\Ghostscript\Process\Argument;
+use GravityMedia\Ghostscript\Process\Arguments;
 
 /**
- * The bounding box info device test class
+ * The bounding box info device test class.
  *
  * @package GravityMedia\GhostscriptTest\Devices
  *
  * @covers  \GravityMedia\Ghostscript\Device\BoundingBoxInfo
  *
+ * @uses    \GravityMedia\Ghostscript\Ghostscript
  * @uses    \GravityMedia\Ghostscript\Device\AbstractDevice
  * @uses    \GravityMedia\Ghostscript\Process\Argument
  * @uses    \GravityMedia\Ghostscript\Process\Arguments
@@ -26,14 +28,16 @@ class BoundingBoxInfoTest extends \PHPUnit_Framework_TestCase
 {
     public function testDeviceCreation()
     {
-        $processBuilder = new ProcessBuilder();
-        $processArguments = new ProcessArguments();
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
 
-        $bboxInfo = new BoundingBoxInfo($processBuilder, $processArguments);
+        $device = new BoundingBoxInfo($ghostscript, $arguments);
 
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Device\BoundingBoxInfo', $bboxInfo);
-        $arg = $processArguments->getArgument('-sDEVICE');
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Process\Argument', $arg);
-        $this->assertEquals('bbox', $arg->getValue());
+        $this->assertInstanceOf(BoundingBoxInfo::class, $device);
+
+        $argument = $arguments->getArgument('-sDEVICE');
+
+        $this->assertInstanceOf(Argument::class, $argument);
+        $this->assertEquals('bbox', $argument->getValue());
     }
 }

@@ -8,16 +8,20 @@
 namespace GravityMedia\GhostscriptTest\Device;
 
 use GravityMedia\Ghostscript\Device\AbstractDevice;
-use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
-use Symfony\Component\Process\ProcessBuilder;
+use GravityMedia\Ghostscript\Ghostscript;
+use GravityMedia\Ghostscript\Input;
+use GravityMedia\Ghostscript\Process\Argument;
+use GravityMedia\Ghostscript\Process\Arguments;
 
 /**
- * The abstract device test class
+ * The abstract device test class.
  *
  * @package GravityMedia\GhostscriptTest\Devices
  *
  * @covers  \GravityMedia\Ghostscript\Device\AbstractDevice
  *
+ * @uses    \GravityMedia\Ghostscript\Ghostscript
+ * @uses    \GravityMedia\Ghostscript\Input
  * @uses    \GravityMedia\Ghostscript\Device\CommandLineParameters\EpsTrait
  * @uses    \GravityMedia\Ghostscript\Device\CommandLineParameters\FontTrait
  * @uses    \GravityMedia\Ghostscript\Device\CommandLineParameters\IccColorTrait
@@ -33,40 +37,54 @@ use Symfony\Component\Process\ProcessBuilder;
 class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @param array $arguments
+     * Returns an OS independent representation of the commandline.
+     *
+     * @param string $commandline
+     *
+     * @return mixed
+     */
+    protected function quoteCommandLine($commandline)
+    {
+        if ('WIN' === strtoupper(substr(PHP_OS, 0, 3))) {
+            return str_replace('"', '\'', $commandline);
+
+        }
+
+        return $commandline;
+    }
+
+    /**
+     * @param array $args
      *
      * @return AbstractDevice
      */
-    protected function createDevice(array $arguments = [])
+    protected function createDevice(array $args = [])
     {
-        $processBuilder = new ProcessBuilder();
-        $processArguments = new ProcessArguments();
-        $processArguments->setArguments($arguments);
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
+        $arguments->setArguments($args);
 
-        return $this->getMockForAbstractClass(
-            'GravityMedia\Ghostscript\Device\AbstractDevice',
-            [$processBuilder, $processArguments]
-        );
+        return $this->getMockForAbstractClass(AbstractDevice::class, [$ghostscript, $arguments]);
     }
 
     public function testArgumentGetter()
     {
         $device = $this->createDevice(['-dFoo=/Bar']);
-        $method = new \ReflectionMethod('GravityMedia\Ghostscript\Device\AbstractDevice', 'getArgument');
+        $method = new \ReflectionMethod(AbstractDevice::class, 'getArgument');
         $method->setAccessible(true);
 
         $this->assertNull($method->invoke($device, '-dBaz'));
 
         /** @var \GravityMedia\Ghostscript\Process\Argument $argument */
         $argument = $method->invoke($device, '-dFoo');
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Process\Argument', $argument);
+        $this->assertInstanceOf(Argument::class, $argument);
         $this->assertSame('/Bar', $argument->getValue());
     }
 
     public function testArgumentTester()
     {
         $device = $this->createDevice(['-dFoo=/Bar']);
-        $method = new \ReflectionMethod('GravityMedia\Ghostscript\Device\AbstractDevice', 'hasArgument');
+        $method = new \ReflectionMethod(AbstractDevice::class, 'hasArgument');
         $method->setAccessible(true);
 
         $this->assertFalse($method->invoke($device, '-dBar'));
@@ -76,7 +94,7 @@ class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
     public function testArgumentValueGetter()
     {
         $device = $this->createDevice(['-dFoo=/Bar']);
-        $method = new \ReflectionMethod('GravityMedia\Ghostscript\Device\AbstractDevice', 'getArgumentValue');
+        $method = new \ReflectionMethod(AbstractDevice::class, 'getArgumentValue');
         $method->setAccessible(true);
 
         $this->assertNull($method->invoke($device, '-dBaz'));
@@ -85,124 +103,75 @@ class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
 
     public function testArgumentSetter()
     {
-        $processBuilder = new ProcessBuilder();
-        $processArguments = new ProcessArguments();
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
 
         /** @var AbstractDevice $device */
-        $device = $this->getMockForAbstractClass(
-            'GravityMedia\Ghostscript\Device\AbstractDevice',
-            [$processBuilder, $processArguments]
-        );
+        $device = $this->getMockForAbstractClass(AbstractDevice::class, [$ghostscript, $arguments]);
 
-        $method = new \ReflectionMethod('GravityMedia\Ghostscript\Device\AbstractDevice', 'setArgument');
+        $method = new \ReflectionMethod(AbstractDevice::class, 'setArgument');
         $method->setAccessible(true);
         $method->invoke($device, '-dFoo=/Bar');
 
-        $argument = $processArguments->getArgument('-dFoo');
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Process\Argument', $argument);
+        $argument = $arguments->getArgument('-dFoo');
+        $this->assertInstanceOf(Argument::class, $argument);
         $this->assertSame('/Bar', $argument->getValue());
-    }
-
-    public function testStringParameterSetter()
-    {
-        $processBuilder = new ProcessBuilder();
-        $processArguments = new ProcessArguments();
-
-        /** @var AbstractDevice $device */
-        $device = $this->getMockForAbstractClass(
-            'GravityMedia\Ghostscript\Device\AbstractDevice',
-            [$processBuilder, $processArguments]
-        );
-
-        $device->setStringParameter('Foo', 'Bar');
-
-        $argument = $processArguments->getArgument('-sFoo');
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Process\Argument', $argument);
-        $this->assertSame('Bar', $argument->getValue());
-    }
-
-    public function testTokenParameterSetter()
-    {
-        $processBuilder = new ProcessBuilder();
-        $processArguments = new ProcessArguments();
-
-        /** @var AbstractDevice $device */
-        $device = $this->getMockForAbstractClass(
-            'GravityMedia\Ghostscript\Device\AbstractDevice',
-            [$processBuilder, $processArguments]
-        );
-
-        $device->setTokenParameter('Foo', 42);
-
-        $argument = $processArguments->getArgument('-dFoo');
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Process\Argument', $argument);
-        $this->assertEquals(42, $argument->getValue());
     }
 
     public function testProcessCreation()
     {
-        $this->assertInstanceOf(
-            'Symfony\Component\Process\Process',
-            $this->createDevice()->createProcess(__DIR__ . '/../../data/input.pdf')
-        );
+        $process = $this->createDevice()->createProcess();
+
+        $this->assertEquals("'gs'", $this->quoteCommandLine($process->getCommandLine()));
     }
 
-    public function testProcessCommandLine()
+    public function testProcessCreationWithInput()
     {
-        $inputFile = __DIR__.'/../../data/input.pdf';
-        $this->assertEquals(
-            "'-c' '' '-f' '$inputFile'",
-            $this->createDevice()->createProcess($inputFile)->getCommandLine()
-        );
+        $file = __DIR__ . '/../../data/input.pdf';
+        $processInput = fopen($file, 'r');
+        $code = '.setpdfwrite';
+
+        $input = new Input();
+        $input->addFile($file);
+        $input->setProcessInput($processInput);
+        $input->setPostScriptCode($code);
+
+        $process = $this->createDevice()->createProcess($input);
+
+        $this->assertEquals("'gs' '-c' '$code' '-f' '$file' '-'", $this->quoteCommandLine($process->getCommandLine()));
+        $this->assertEquals($processInput, $process->getInput());
+
+        fclose($processInput);
     }
 
-    public function testProcessCommandLineWithAddingInputFileBefore()
+    public function testProcessCreationWithPostScriptInput()
     {
-        $inputFile = __DIR__.'/../../data/input.pdf';
-        $this->assertEquals(
-            "'-c' '' '-f' '$inputFile'",
-            $this->createDevice()->addInputFile($inputFile)->createProcess()->getCommandLine()
-        );
+        $input = '.setpdfwrite';
+
+        $process = $this->createDevice()->createProcess($input);
+
+        $this->assertEquals("'gs' '-c' '$input'", $this->quoteCommandLine($process->getCommandLine()));
     }
 
-    public function testProcessCommandLineWithStdin()
+    public function testProcessCreationWithFileInput()
     {
-        $this->assertEquals(
-            "'-c' '' '-f' '-'",
-            $this->createDevice()->createProcess('-')->getCommandLine()
-        );
+        $input = __DIR__ . '/../../data/input.pdf';
+
+        $process = $this->createDevice()->createProcess($input);
+
+        $this->assertEquals("'gs' '-f' '$input'", $this->quoteCommandLine($process->getCommandLine()));
     }
 
-    public function testProcessCommandLineWithAddingStdinInputBefore()
+    public function testProcessCreationWithResourceInput()
     {
-        $this->assertEquals(
-            "'-c' '' '-f' '-'",
-            $this->createDevice()->addInputStdin()->createProcess()->getCommandLine()
-        );
-    }
+        $input = fopen(__DIR__ . '/../../data/input.pdf', 'r');
 
-    public function testProcessCommandLineStdinIsLastInput()
-    {
-        $inputFile = __DIR__.'/../../data/input.pdf';
-        $this->assertEquals(
-            "'-c' '' '-f' '$inputFile' '-'",
-            $this->createDevice()->addInputStdin()->addInputFile($inputFile)->createProcess()->getCommandLine()
-        );
-    }
+        $process = $this->createDevice()->createProcess($input);
 
-    public function testConsecutiveProcessCommandLines()
-    {
-        $inputFile = __DIR__.'/../../data/input.pdf';
-        $device = $this->createDevice();
-        $this->assertEquals(
-            "'-c' '' '-f' '$inputFile' '-'",
-            $device->addInputFile($inputFile)->addInputStdin()->createProcess()->getCommandLine()
-        );
-        // Second process created from same device has no input set.
-        $this->assertEquals(
-            "'-c' '' '-f'",
-            $device->createProcess()->getCommandLine()
-        );
+        $this->assertEquals("'gs' '-'", $this->quoteCommandLine($process->getCommandLine()));
+        $this->assertEquals($input, $process->getInput());
+
+        fclose($input);
     }
 
     /**
@@ -210,14 +179,9 @@ class AbstractDeviceTest extends \PHPUnit_Framework_TestCase
      */
     public function testProcessCreationThrowsExceptionOnMissingInputFile()
     {
-        $this->createDevice()->createProcess('/path/to/input/file.pdf');
-    }
+        $input = new Input();
+        $input->addFile('/path/to/input/file.pdf');
 
-    /**
-     * @expectedException \RuntimeException
-     */
-    public function testAddingMissingInputFileThrowsException()
-    {
-        $this->createDevice()->addInputFile('/path/to/input/file.pdf');
+        $this->createDevice()->createProcess($input);
     }
 }

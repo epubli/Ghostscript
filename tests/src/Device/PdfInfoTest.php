@@ -8,16 +8,18 @@
 namespace GravityMedia\GhostscriptTest\Device;
 
 use GravityMedia\Ghostscript\Device\PdfInfo;
-use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
-use Symfony\Component\Process\ProcessBuilder;
+use GravityMedia\Ghostscript\Ghostscript;
+use GravityMedia\Ghostscript\Process\Arguments;
 
 /**
- * The pdf info device test class
+ * The pdf info device test class.
  *
  * @package GravityMedia\GhostscriptTest\Devices
  *
  * @covers  \GravityMedia\Ghostscript\Device\PdfInfo
  *
+ * @uses    \GravityMedia\Ghostscript\Ghostscript
+ * @uses    \GravityMedia\Ghostscript\Input
  * @uses    \GravityMedia\Ghostscript\Device\AbstractDevice
  * @uses    \GravityMedia\Ghostscript\Device\NoDisplay
  * @uses    \GravityMedia\Ghostscript\Process\Argument
@@ -25,44 +27,62 @@ use Symfony\Component\Process\ProcessBuilder;
  */
 class PdfInfoTest extends \PHPUnit_Framework_TestCase
 {
-    private $builder;
-
-    private $arguments;
-
-    private $pdfInfoPath;
-
-    private $inputFile;
-
-    public function setUp()
+    /**
+     * Returns an OS independent representation of the commandline.
+     *
+     * @param string $commandline
+     *
+     * @return mixed
+     */
+    protected function quoteCommandLine($commandline)
     {
-        $this->pdfInfoPath = __DIR__ . '/../../data/pdf_info.ps';
-        $this->inputFile = __DIR__ . '/../../data/input.pdf';
-        $this->arguments = new ProcessArguments();
-        $this->builder = new ProcessBuilder();
-        $this->builder->setPrefix('gs');
+        if ('WIN' === strtoupper(substr(PHP_OS, 0, 3))) {
+            return str_replace('"', '\'', $commandline);
+
+        }
+
+        return $commandline;
     }
 
     public function testDeviceCreation()
     {
-        $pdfInfo = new PdfInfo($this->builder, $this->arguments, $this->pdfInfoPath);
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
+        $pdfInfoPath = __DIR__ . '/../../data/pdf_info.ps';
 
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Device\PdfInfo', $pdfInfo);
-        $this->assertInstanceOf('GravityMedia\Ghostscript\Device\NoDisplay', $pdfInfo);
+        $device = new PdfInfo($ghostscript, $arguments, $pdfInfoPath);
 
-        $field = new \ReflectionProperty('GravityMedia\Ghostscript\Device\PdfInfo', 'pdfInfoPath');
+        $this->assertInstanceOf(PdfInfo::class, $device);
+
+        $field = new \ReflectionProperty(PdfInfo::class, 'pdfInfoPath');
         $field->setAccessible(true);
-        $this->assertEquals($this->pdfInfoPath, $field->getValue($pdfInfo));
+        $this->assertEquals($pdfInfoPath, $field->getValue($device));
     }
 
     public function testProcessCreation()
     {
-        $pdfInfoPath = $this->pdfInfoPath;
-        $inputFile = $this->inputFile;
-        
-        $pdfInfo = new PdfInfo($this->builder, $this->arguments, $pdfInfoPath);
-        $process = $pdfInfo->createProcess($inputFile);
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
+        $pdfInfoPath = __DIR__ . '/../../data/pdf_info.ps';
+        $inputFile = __DIR__ . '/../../data/input.pdf';
 
-        $expectedCommandLine = "'gs' '-dNODISPLAY' '-sFile=$inputFile' '-c' '' '-f' '$pdfInfoPath'";
-        $this->assertEquals($expectedCommandLine, $process->getCommandLine());
+        $device = new PdfInfo($ghostscript, $arguments, $pdfInfoPath);
+        $process = $device->createProcess($inputFile);
+
+        $expectedCommandLine = "'gs' '-dNODISPLAY' '-sFile=$inputFile' '-f' '$pdfInfoPath'";
+        $this->assertEquals($expectedCommandLine, $this->quoteCommandLine($process->getCommandLine()));
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     */
+    public function testProcessCreationThrowsExceptionOnMissingInputFile()
+    {
+        $ghostscript = new Ghostscript();
+        $arguments = new Arguments();
+        $pdfInfoPath = __DIR__ . '/../../data/pdf_info.ps';
+
+        $device = new PdfInfo($ghostscript, $arguments, $pdfInfoPath);
+        $device->createProcess();
     }
 }

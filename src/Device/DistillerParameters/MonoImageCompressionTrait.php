@@ -12,9 +12,11 @@ use GravityMedia\Ghostscript\Enum\MonoImageFilter;
 use GravityMedia\Ghostscript\Enum\PdfSettings;
 
 /**
- * The monochrome image compression distiller parameters trait
+ * The monochrome image compression distiller parameters trait.
  *
  * @package GravityMedia\Ghostscript\Device\DistillerParameters
+ *
+ * @link    http://ghostscript.com/doc/current/Ps2pdf.htm
  */
 trait MonoImageCompressionTrait
 {

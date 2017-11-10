@@ -7,44 +7,58 @@
 
 namespace GravityMedia\Ghostscript\Device;
 
-use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
-use Symfony\Component\Process\ProcessBuilder;
+use GravityMedia\Ghostscript\Ghostscript;
+use GravityMedia\Ghostscript\Process\Arguments;
 
 /**
- * The PDF info device class
+ * The PDF info device class.
  *
- * This class supports the pdf_info.ps script that is contained in Ghostscript toolbin
- * (http://svn.ghostscript.com/ghostscript/trunk/gs/toolbin/).
+ * This class supports the pdf_info.ps script that is contained in Ghostscript toolbin.
+ *
+ * @link    http://svn.ghostscript.com/ghostscript/trunk/gs/toolbin/
  *
  * @package GravityMedia\Ghostscript\Devices
  */
 class PdfInfo extends NoDisplay
 {
+    /**
+     * The PDF info path.
+     *
+     * @var string
+     */
     private $pdfInfoPath;
 
     /**
-     * Create null device object
+     * Create PDF info device object.
      *
-     * @param ProcessBuilder $builder
-     * @param ProcessArguments $arguments
-     * @param string $pdfInfoPath Path to toolbin/pdf_info.ps
+     * @param Ghostscript $ghostscript
+     * @param Arguments   $arguments
+     * @param string      $pdfInfoPath Path to toolbin/pdf_info.ps
      */
-    public function __construct(ProcessBuilder $builder, ProcessArguments $arguments, $pdfInfoPath)
+    public function __construct(Ghostscript $ghostscript, Arguments $arguments, $pdfInfoPath)
     {
-        parent::__construct($builder, $arguments);
+        parent::__construct($ghostscript, $arguments);
+
         $this->pdfInfoPath = $pdfInfoPath;
     }
 
     /**
-     * @param string $inputFile Path to PDF file to be examined
+     * Create process object.
+     *
+     * @param string $input Path to PDF file to be examined
+     *
+     * @throws \RuntimeException
+     *
      * @return \Symfony\Component\Process\Process
      */
-    public function createProcess($inputFile = null)
+    public function createProcess($input = null)
     {
-        // the PDF file to be examined must be provided as parameter -sFile=...
-        $this->setStringParameter('File', $inputFile);
+        if (!is_string($input) || !file_exists($input)) {
+            throw new \RuntimeException('Input file does not exist');
+        }
 
-        // the pdf_info.ps script will be read as input to gs
+        $this->setArgument(sprintf('-sFile=%s', $input));
+
         return parent::createProcess($this->pdfInfoPath);
     }
 }

@@ -7,128 +7,102 @@
 
 namespace GravityMedia\Ghostscript\Device;
 
-use GravityMedia\Ghostscript\Device\CommandLineParameters\EpsTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\FontTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\IccColorTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\InteractionTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\OtherTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\OutputSelectionTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\PageTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\RenderingTrait;
-use GravityMedia\Ghostscript\Device\CommandLineParameters\ResourceTrait;
-use GravityMedia\Ghostscript\Process\Argument as ProcessArgument;
-use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
+use GravityMedia\Ghostscript\Ghostscript;
+use GravityMedia\Ghostscript\Input;
+use GravityMedia\Ghostscript\Process\Argument;
+use GravityMedia\Ghostscript\Process\Arguments;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\ProcessBuilder;
 
 /**
- * The abstract device class
+ * The abstract device class.
  *
  * @package GravityMedia\Ghostscript\Devices
  */
 abstract class AbstractDevice
 {
     /**
-     * Use command line options
+     * Use command line options.
      */
-    use CommandLineOptionsTrait;
+    use CommandLineParametersTrait;
 
     /**
-     * Use rendering parameters
+     * Use rendering parameters.
      */
-    use RenderingTrait;
+    use CommandLineParameters\RenderingTrait;
 
     /**
-     * Use page parameters
+     * Use page parameters.
      */
-    use PageTrait;
+    use CommandLineParameters\PageTrait;
 
     /**
-     * Use font-related parameters
+     * Use font-related parameters.
      */
-    use FontTrait;
+    use CommandLineParameters\FontTrait;
 
     /**
-     * Use resource-related parameters
+     * Use resource-related parameters.
      */
-    use ResourceTrait;
+    use CommandLineParameters\ResourceTrait;
 
     /**
-     * Use interaction parameters
+     * Use interaction parameters.
      */
-    use InteractionTrait;
+    use CommandLineParameters\InteractionTrait;
 
     /**
-     * Use device and output selection parameters
+     * Use device and output selection parameters.
      */
-    use OutputSelectionTrait;
+    use CommandLineParameters\OutputSelectionTrait;
 
     /**
-     * Use EPS parameters
+     * Use EPS parameters.
      */
-    use EpsTrait;
+    use CommandLineParameters\EpsTrait;
 
     /**
-     * Use ICC color parameters
+     * Use ICC color parameters.
      */
-    use IccColorTrait;
+    use CommandLineParameters\IccColorTrait;
 
     /**
-     * Use other parameters
+     * Use other parameters.
      */
-    use OtherTrait;
+    use CommandLineParameters\OtherTrait;
 
     /**
-     * PostScript commands to be executed via command line when using this device.
-     */
-    const POSTSCRIPT_COMMANDS = '';
-
-    /**
-     * The process builder object
+     * The Ghostscript object.
      *
-     * @var ProcessBuilder
+     * @var Ghostscript
      */
-    private $builder;
+    private $ghostscript;
 
     /**
-     * The arguments object
+     * The arguments object.
      *
-     * @var ProcessArguments
+     * @var Arguments
      */
     private $arguments;
 
     /**
-     * List of input files
+     * Create abstract device object.
      *
-     * @var array
+     * @param Ghostscript $ghostscript
+     * @param Arguments   $arguments
      */
-    private $inputFiles = [];
-
-    /**
-     * Whether to read input from stdin
-     *
-     * @var bool
-     */
-    private $inputStdin = false;
-
-    /**
-     * Create abstract device object
-     *
-     * @param ProcessBuilder $builder
-     * @param ProcessArguments $arguments
-     */
-    public function __construct(ProcessBuilder $builder, ProcessArguments $arguments)
+    public function __construct(Ghostscript $ghostscript, Arguments $arguments)
     {
-        $this->builder = $builder;
+        $this->ghostscript = $ghostscript;
         $this->arguments = $arguments;
     }
 
     /**
-     * Get Argument
+     * Get argument.
      *
      * @param string $name
      *
-     * @return null|ProcessArgument
+     * @return null|Argument
      */
     protected function getArgument($name)
     {
@@ -136,7 +110,7 @@ abstract class AbstractDevice
     }
 
     /**
-     * Whether argument is set
+     * Whether argument is set.
      *
      * @param string $name
      *
@@ -144,11 +118,11 @@ abstract class AbstractDevice
      */
     protected function hasArgument($name)
     {
-        return $this->getArgument($name) !== null;
+        return null !== $this->getArgument($name);
     }
 
     /**
-     * Get argument value
+     * Get argument value.
      *
      * @param string $name
      *
@@ -165,7 +139,7 @@ abstract class AbstractDevice
     }
 
     /**
-     * Set argument
+     * Set argument.
      *
      * @param string $argument
      *
@@ -179,103 +153,105 @@ abstract class AbstractDevice
     }
 
     /**
-     * Set a generic command line parameter with a string value
+     * Sanitize input.
      *
-     * @param string $param the parameter name
-     * @param string $value the parameter value
+     * @param null|string|resource|Input $input
      *
-     * @return $this
+     * @return Input
      */
-    public function setStringParameter($param, $value)
+    protected function sanitizeInput($input)
     {
-        $this->setArgument(sprintf('-s%s=%s', $param, $value));
-
-        return $this;
-    }
-
-    /**
-     * Set a generic command line parameter with a token value
-     *
-     * @param string $param the parameter name
-     * @param mixed $value the parameter value
-     *
-     * @return $this
-     */
-    public function setTokenParameter($param, $value)
-    {
-        $this->setArgument(sprintf('-d%s=%s', $param, $value));
-
-        return $this;
-    }
-
-    /**
-     * Add an input file
-     *
-     * @param string $inputFile a path to an existing file
-     *
-     * @throws \RuntimeException if $inputFile does not exist
-     *
-     * @return $this
-     */
-    public function addInputFile($inputFile)
-    {
-        if (!is_file($inputFile)) {
-            throw new \RuntimeException('Input file does not exist');
+        if (null === $input) {
+            $input = $this->ghostscript->getOption('input', new Input());
         }
-        $this->inputFiles[] = $inputFile;
 
-        return $this;
+        if ($input instanceof Input) {
+            return $input;
+        }
+
+        $instance = new Input();
+
+        if (is_resource($input)) {
+            return $instance->setProcessInput($input);
+        }
+
+        if (file_exists($input)) {
+            return $instance->addFile($input);
+        }
+
+        return $instance->setPostScriptCode((string)$input);
     }
 
     /**
-     * Add an stdin as input file
+     * Create process arguments.
      *
-     * @return $this
+     * @param Input $input
+     *
+     * @throws \RuntimeException
+     *
+     * @return array
      */
-    public function addInputStdin()
+    protected function createProcessArguments(Input $input)
     {
-        $this->inputStdin = true;
+        $arguments = array_values($this->arguments->toArray());
 
-        return $this;
+        if (null !== $input->getPostScriptCode()) {
+            array_push($arguments, '-c', $input->getPostScriptCode());
+        }
+
+        if (count($input->getFiles()) > 0) {
+            array_push($arguments, '-f');
+            foreach ($input->getFiles() as $file) {
+                if (!is_file($file)) {
+                    throw new \RuntimeException('Input file does not exist');
+                }
+
+                array_push($arguments, $file);
+            }
+        }
+
+        if (null !== $input->getProcessInput()) {
+            array_push($arguments, '-');
+        }
+
+        return $arguments;
     }
 
     /**
-     * Create process object
+     * Create process builder.
      *
-     * @param string $inputFile either a path to an existing file or a dash (-) to read input from stdin
+     * @param array $arguments
+     * @param Input $input
      *
-     * @throws \RuntimeException if $inputFile does not exist
+     * @return ProcessBuilder
+     */
+    protected function createProcessBuilder(array $arguments, Input $input)
+    {
+        $processBuilder = ProcessBuilder::create($arguments);
+        $processBuilder->setPrefix($this->ghostscript->getOption('bin', Ghostscript::DEFAULT_BINARY));
+        $processBuilder->setWorkingDirectory($this->ghostscript->getOption('cwd'));
+        $processBuilder->addEnvironmentVariables($this->ghostscript->getOption('env', []));
+        $processBuilder->setTimeout($this->ghostscript->getOption('timeout', 60));
+        $processBuilder->setInput($input->getProcessInput());
+
+        return $processBuilder;
+    }
+
+    /**
+     * Create process object.
+     *
+     * @param null|string|resource|Input $input
+     *
+     * @throws \RuntimeException
      *
      * @return Process
      */
-    public function createProcess($inputFile = null)
+    public function createProcess($input = null)
     {
-        if ('-' == $inputFile) {
-            $this->addInputStdin();
-        } elseif (null !== $inputFile) {
-            $this->addInputFile($inputFile);
-        }
+        $input = $this->sanitizeInput($input);
 
-        $arguments = array_values($this->arguments->toArray());
-        array_push($arguments, '-c', static::POSTSCRIPT_COMMANDS, '-f');
-        if (count($this->inputFiles)) {
-            $arguments = array_merge($arguments, $this->inputFiles);
-        }
-        if ($this->inputStdin) {
-            array_push($arguments, '-');
-        }
-        $this->resetInput();
+        $arguments = $this->createProcessArguments($input);
 
-        return $this->builder->setArguments($arguments)->getProcess();
-    }
-
-    /**
-     * Reset the input-related fields of this device.
-     * Future processes created from this device will have their own input parameters.
-     */
-    private function resetInput()
-    {
-        $this->inputFiles = [];
-        $this->inputStdin = false;
+        return $this->createProcessBuilder($arguments, $input)->getProcess();
     }
 }

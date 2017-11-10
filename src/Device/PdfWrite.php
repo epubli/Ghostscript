@@ -9,79 +9,72 @@ namespace GravityMedia\Ghostscript\Device;
 
 use GravityMedia\Ghostscript\Enum\PdfSettings;
 use GravityMedia\Ghostscript\Enum\ProcessColorModel;
-use GravityMedia\Ghostscript\Process\Arguments as ProcessArguments;
-use Symfony\Component\Process\ProcessBuilder;
+use GravityMedia\Ghostscript\Ghostscript;
+use GravityMedia\Ghostscript\Input;
+use GravityMedia\Ghostscript\Process\Arguments;
 
 /**
- * The PDF write device class
+ * The PDF write device class.
  *
  * @package GravityMedia\Ghostscript\Devices
  */
 class PdfWrite extends AbstractDevice
 {
     /**
-     * Use distiller parameters
+     * Use distiller parameters.
      */
     use DistillerParametersTrait;
 
     /**
-     * Use color image compression distiller parameters
+     * Use color image compression distiller parameters.
      */
     use DistillerParameters\ColorImageCompressionTrait;
 
     /**
-     * Use grayscale image compression distiller parameters
+     * Use grayscale image compression distiller parameters.
      */
     use DistillerParameters\GrayImageCompressionTrait;
 
     /**
-     * Use monochrome image compression distiller parameters
+     * Use monochrome image compression distiller parameters.
      */
     use DistillerParameters\MonoImageCompressionTrait;
 
     /**
-     * Use page compression distiller parameters
+     * Use page compression distiller parameters.
      */
     use DistillerParameters\PageCompressionTrait;
 
     /**
-     * Use font distiller parameters
+     * Use font distiller parameters.
      */
     use DistillerParameters\FontTrait;
 
     /**
-     * Use color conversion distiller parameters
+     * Use color conversion distiller parameters.
      */
     use DistillerParameters\ColorConversionTrait;
 
     /**
-     * Use advanced distiller parameters
+     * Use advanced distiller parameters.
      */
     use DistillerParameters\AdvancedTrait;
 
     /**
-     * This operator conditions the environment for the pdfwrite output device. It is a shorthand for setting parameters
-     * that have been deemed benificial. While not strictly necessary, it is usually helpful to set call this when using
-     * the pdfwrite device.
-     * @link http://ghostscript.com/doc/current/Language.htm#.setpdfwrite
-     */
-    const POSTSCRIPT_COMMANDS = '.setpdfwrite';
-
-    /**
-     * Create PDF write device object
+     * Create PDF write device object.
      *
-     * @param ProcessBuilder   $builder
-     * @param ProcessArguments $arguments
+     * @param Ghostscript $ghostscript
+     * @param Arguments   $arguments
      */
-    public function __construct(ProcessBuilder $builder, ProcessArguments $arguments)
+    public function __construct(Ghostscript $ghostscript, Arguments $arguments)
     {
-        parent::__construct($builder, $arguments->setArgument('-sDEVICE=pdfwrite'));
+        parent::__construct($ghostscript, $arguments->setArgument('-sDEVICE=pdfwrite'));
 
         $this->setPdfSettings(PdfSettings::__DEFAULT);
     }
 
     /**
-     * Get output file
+     * Get output file.
      *
      * @return null|string
      */
@@ -91,7 +84,7 @@ class PdfWrite extends AbstractDevice
     }
 
     /**
-     * Set output file
+     * Set output file.
      *
      * @param string $outputFile
      *
@@ -105,27 +98,7 @@ class PdfWrite extends AbstractDevice
     }
 
     /**
-     * Whether output file is stdout.
-     *
-     * @return bool
-     */
-    public function isOutputStdout()
-    {
-        return $this->getOutputFile() == '-';
-    }
-
-    /**
-     * Set stdout as output.
-     *
-     * @return $this
-     */
-    public function setOutputStdout()
-    {
-        return $this->setOutputFile('-');
-    }
-
-    /**
-     * Get PDF settings
+     * Get PDF settings.
      *
      * @return string
      */
@@ -135,7 +108,7 @@ class PdfWrite extends AbstractDevice
     }
 
     /**
-     * Set PDF settings
+     * Set PDF settings.
      *
      * @param string $pdfSettings
      *
@@ -156,7 +129,7 @@ class PdfWrite extends AbstractDevice
     }
 
     /**
-     * Get process color model
+     * Get process color model.
      *
      * @return string
      */
@@ -166,7 +139,7 @@ class PdfWrite extends AbstractDevice
     }
 
     /**
-     * Set process color model
+     * Set process color model.
      *
      * @param string $processColorModel
      *
@@ -184,5 +157,22 @@ class PdfWrite extends AbstractDevice
         $this->setArgument(sprintf('-dProcessColorModel=/%s', $processColorModel));
 
         return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    protected function createProcessArguments(Input $input)
+    {
+        $code = $input->getPostScriptCode();
+        if (null === $code) {
+            $code = '';
+        }
+
+        if (false === strstr($code, '.setpdfwrite')) {
+            $input->setPostScriptCode(ltrim($code . ' .setpdfwrite', ' '));
+        }
+
+        return parent::createProcessArguments($input);
     }
 }
